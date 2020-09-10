@@ -11,6 +11,14 @@ Within the directory of an Angular CLI application, run:
 ng add @skyux-sdk/angular-schematics
 ```
 
+## Usage
+
+### Generate a resources module for your library
+
+```
+ng generate @skyux-sdk/angular-builders:resources-module
+```
+
 ## Local setup
 
 - Run `npm start` for local development; changes are transpiled automatically after each file is saved.
