@@ -7,8 +7,8 @@ function copyFilesToDist() {
     ['CHANGELOG.md'],
     ['package.json'],
     ['collection.json'],
-    ['src/schematics/ng-generate/resources-module/files/lib/shared/resources-provider.ts.template'],
-    ['src/schematics/ng-generate/resources-module/files/lib/shared/resources.module.ts.template']
+    ['src/schematics/ng-generate/resources-module/files/lib/shared/__name@dasherize__-resources-provider.ts.template'],
+    ['src/schematics/ng-generate/resources-module/files/lib/shared/__name@dasherize__-resources.module.ts.template']
   ];
 
   pathsToCopy.forEach(pathArr => {

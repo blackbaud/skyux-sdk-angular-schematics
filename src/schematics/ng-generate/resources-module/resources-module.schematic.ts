@@ -24,22 +24,94 @@ import fs from 'fs-extra';
 import glob from 'glob';
 import path from 'path';
 
-// import {
-//   addModuleImportToModule,
-//   buildComponent,
-//   findModuleFromOptions,
-// } from '@angular/cdk/schematics';
+import {
+  InputOptions
+} from './input-options';
 
-function getLocaleFiles(options: any): string[] {
-  return glob.sync(
-    path.join(options.path, 'assets/locales', 'resources_*.json')
+import {
+  ResourceMessages
+} from './resource-messages';
+
+import {
+  TemplateContext
+} from './template-context';
+
+function getResourceFilesContents(srcPath: string) {
+  const contents: any = {};
+  const files = glob.sync(
+    path.join(srcPath, 'assets/locales/resources_*.json')
+  );
+
+  files.forEach(file => {
+    const locale = parseLocaleIdFromFileName(file);
+    contents[locale] = fs.readJsonSync(file);
+  });
+
+  return contents;
+}
+
+function parseLocaleIdFromFileName(fileName: string): string {
+  return fileName
+    .split('.json')[0]
+    .split('resources_')[1]
+    .toUpperCase()
+    .replace('_', '-');
+}
+
+function parseResourceMessages(srcPath: string): ResourceMessages {
+  const messages: ResourceMessages = {};
+  const contents = getResourceFilesContents(srcPath);
+
+  /**
+   * Standardize keys to be uppercase, due to some language limitations
+   * with lowercase characters.
+   * See: https://stackoverflow.com/questions/234591/upper-vs-lower-case
+   */
+  const resourceFilesExist = ('EN-US' in contents);
+  if (!resourceFilesExist) {
+    return messages;
+  }
+
+  Object.keys(contents).forEach(locale => {
+    messages[locale] = {};
+    Object.keys(contents[locale]).forEach(key => {
+      messages[locale][key] = contents[locale][key].message;
+    });
+  });
+
+  return messages;
+}
+
+function ensureDefaultResourceFileExists(srcPath: string) {
+  const defaultResourcePath = path.join(`${srcPath}/assets/locales/resources_en_US.json`);
+  if (fs.existsSync(defaultResourcePath)) {
+    return;
+  }
+
+  fs.writeJsonSync(
+    defaultResourcePath,
+    {
+      hello_world: {
+        _description: 'A simple message.',
+        message: 'Hello, world!'
+      }
+    },
+    {
+      spaces: 2
+    }
   );
 }
 
-function getLocaleIDFromFileName(fileName: string): string {
-  let locale = fileName.split('.json')[0].split('resources_')[1];
-  locale = locale.toUpperCase().replace('_', '-');
-  return locale;
+/**
+ * Adds `@skyux/i18n` to the project's package.json `peerDependencies`.
+ */
+function addSkyUxPeerDependency(tree: Tree, rootPath: string) {
+  const packageJsonPath = path.join(rootPath, 'package.json');
+  const packageJsonContent = tree.read(packageJsonPath)!;
+  const packageJson = JSON.parse(packageJsonContent.toString());
+  packageJson.peerDependencies = packageJson.peerDependencies || {};
+  packageJson.peerDependencies['@skyux/i18n'] = '^4.0.0';
+  tree.overwrite(packageJsonPath, JSON.stringify(packageJson, undefined, 2));
 }
 
 /**
@@ -48,7 +120,7 @@ function getLocaleIDFromFileName(fileName: string): string {
  */
 function overwriteIfExists(host: Tree): Rule {
   return forEach(fileEntry => {
-    if (host.exists(fileEntry.path)) {
+    if (host.exists(fileEntry.path) && fileEntry) {
       host.overwrite(fileEntry.path, fileEntry.content);
       return null;
     }
@@ -56,64 +128,30 @@ function overwriteIfExists(host: Tree): Rule {
   });
 }
 
-interface Resources {
-  [localeId: string]: {
-    [_: string]: {
-      message: string;
-    }
-  }
-}
-
-export function generateResourcesModule(options: any): Rule {
+export function generateResourcesModule(options: InputOptions): Rule {
   return (tree: Tree, _context: SchematicContext) => {
+
     const workspace = getWorkspace(tree);
     const project = workspace.projects[options.project];
+    const srcPath = path.join(path.normalize(project.root), 'src');
+    const movePath = path.normalize(srcPath + '/');
 
-    options.path = path.join(path.normalize(project.root), 'src');
-    options.name = options.project;
+    addSkyUxPeerDependency(tree, project.root);
 
-    const resources: Resources = {};
+    ensureDefaultResourceFileExists(srcPath);
+    const messages = parseResourceMessages(srcPath);
+    const templateContext: TemplateContext = {
+      name: options.project,
+      resources: JSON.stringify(messages)
+    };
 
-    const resourceFilesContents: any = {};
-    const localeFiles = getLocaleFiles(options);
-    localeFiles.forEach(file => {
-      const locale = getLocaleIDFromFileName(file);
-      const contents = fs.readJsonSync(file);
-      resourceFilesContents[locale] = contents;
-    });
+    const templateConfig = { ...strings, ...templateContext };
 
-    /**
-     * Standardize keys to be uppercase, due to some language limitations
-     * with lowercase characters.
-     * See: https://stackoverflow.com/questions/234591/upper-vs-lower-case
-     */
-    const resourceFilesExist = ('EN-US' in resourceFilesContents);
-    if (!resourceFilesExist) {
-      return tree;
-    }
-
-    Object.keys(resourceFilesContents).forEach((locale) => {
-      resources[locale] = {};
-      Object.keys(resourceFilesContents[locale]).forEach((key) => {
-        resources[locale][key] = resourceFilesContents[locale][key].message;
-      });
-    });
-
-    options.resources = JSON.stringify(resources);
-
-    const movePath = path.normalize(options.path + '/');
-
-    const templateSource = apply(
-      url('./files'),
-      [
-        applyTemplates({
-          ...strings,
-          ...options
-        }),
-        move(movePath),
-        overwriteIfExists(tree)
-      ]
-    );
+    const templateSource = apply(url('./files'), [
+      applyTemplates(templateConfig),
+      move(movePath),
+      overwriteIfExists(tree)
+    ]);
 
     return chain([
       mergeWith(templateSource, MergeStrategy.Overwrite)
