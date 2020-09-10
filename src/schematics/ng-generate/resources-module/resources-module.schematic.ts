@@ -1,24 +1,28 @@
 import {
+  strings
+} from '@angular-devkit/core';
+
+import {
   apply,
-  // FileEntry,
+  applyTemplates,
+  chain,
   forEach,
-  // MergeStrategy,
+  MergeStrategy,
   mergeWith,
-  // move,
+  move,
   Rule,
   SchematicContext,
-  template,
   Tree,
-  url,
-  move,
-  // FileEntry,
-  MergeStrategy
+  url
 } from '@angular-devkit/schematics';
-// import { strings } from '@angular-devkit/core';
 
+import {
+  getWorkspace
+} from '@schematics/angular/utility/config';
+
+import fs from 'fs-extra';
+import glob from 'glob';
 import path from 'path';
-import { getWorkspace } from '@schematics/angular/utility/config';
-import { strings } from '@angular-devkit/core';
 
 // import {
 //   addModuleImportToModule,
@@ -26,11 +30,23 @@ import { strings } from '@angular-devkit/core';
 //   findModuleFromOptions,
 // } from '@angular/cdk/schematics';
 
+function getLocaleFiles(options: any): string[] {
+  return glob.sync(
+    path.join(options.path, 'assets/locales', 'resources_*.json')
+  );
+}
+
+function getLocaleIDFromFileName(fileName: string): string {
+  let locale = fileName.split('.json')[0].split('resources_')[1];
+  locale = locale.toUpperCase().replace('_', '-');
+  return locale;
+}
+
 /**
  * Fixes an Angular CLI issue with merge strategies.
  * @see https://github.com/angular/angular-cli/issues/11337#issuecomment-516543220
  */
-export function overwriteIfExists(host: Tree): Rule {
+function overwriteIfExists(host: Tree): Rule {
   return forEach(fileEntry => {
     if (host.exists(fileEntry.path)) {
       host.overwrite(fileEntry.path, fileEntry.content);
@@ -40,28 +56,67 @@ export function overwriteIfExists(host: Tree): Rule {
   });
 }
 
+interface Resources {
+  [localeId: string]: {
+    [_: string]: {
+      message: string;
+    }
+  }
+}
+
 export function generateResourcesModule(options: any): Rule {
-  return (tree: Tree, context: SchematicContext) => {
+  return (tree: Tree, _context: SchematicContext) => {
     const workspace = getWorkspace(tree);
     const project = workspace.projects[options.project];
 
     options.path = path.join(path.normalize(project.root), 'src');
     options.name = options.project;
-    options.resources = JSON.stringify({
-      'EN-US': {}
-    }).replace(/'/g, '\'').replace(/"/g, '\'').replace(/:{/g, ': {');
+
+    const resources: Resources = {};
+
+    const resourceFilesContents: any = {};
+    const localeFiles = getLocaleFiles(options);
+    localeFiles.forEach(file => {
+      const locale = getLocaleIDFromFileName(file);
+      const contents = fs.readJsonSync(file);
+      resourceFilesContents[locale] = contents;
+    });
+
+    /**
+     * Standardize keys to be uppercase, due to some language limitations
+     * with lowercase characters.
+     * See: https://stackoverflow.com/questions/234591/upper-vs-lower-case
+     */
+    const resourceFilesExist = ('EN-US' in resourceFilesContents);
+    if (!resourceFilesExist) {
+      return tree;
+    }
+
+    Object.keys(resourceFilesContents).forEach((locale) => {
+      resources[locale] = {};
+      Object.keys(resourceFilesContents[locale]).forEach((key) => {
+        resources[locale][key] = resourceFilesContents[locale][key].message;
+      });
+    });
+
+    options.resources = JSON.stringify(resources);
 
     const movePath = path.normalize(options.path + '/');
 
     const templateSource = apply(
       url('./files'),
       [
-        template({ ...strings, ...options }),
+        applyTemplates({
+          ...strings,
+          ...options
+        }),
         move(movePath),
         overwriteIfExists(tree)
       ]
     );
-    const rule = mergeWith(templateSource, MergeStrategy.Overwrite);
-    return rule(tree, context);
+
+    return chain([
+      mergeWith(templateSource, MergeStrategy.Overwrite)
+    ]);
   };
 }

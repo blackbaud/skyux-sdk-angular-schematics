@@ -14,6 +14,7 @@ import {
 @Injectable()
 export class <%= classify(name) %>ResourcesProvider implements SkyLibResourcesProvider {
 
+  /* tslint:disable-next-line */
   private resources: any = <%= resources %>;
 
   public getString(localeInfo: SkyAppLocaleInfo, name: string): string {
