@@ -16,7 +16,7 @@ ng add @skyux-sdk/angular-schematics
 ### Generate a resources module for your library
 
 ```
-ng generate @skyux-sdk/angular-builders:resources-module
+ng generate @skyux-sdk/angular-schematics:lib-resources-module
 ```
 
 ## Local setup

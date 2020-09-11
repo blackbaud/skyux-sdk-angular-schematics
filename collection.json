@@ -6,10 +6,10 @@
       "factory": "./src/schematics/ng-add/ng-add.schematic#ngAdd",
       "schema": "./src/schematics/ng-add/schema.json"
     },
-    "resources-module": {
+    "lib-resources-module": {
       "description": "Generate a resources module for your library.",
-      "factory": "./src/schematics/ng-generate/resources-module/resources-module.schematic#generateResourcesModule",
-      "schema": "./src/schematics/ng-generate/resources-module/schema.json"
+      "factory": "./src/schematics/ng-generate/lib-resources-module/lib-resources-module.schematic#generateResourcesModule",
+      "schema": "./src/schematics/ng-generate/lib-resources-module/schema.json"
     }
   }
 }
