@@ -4,29 +4,25 @@
  * To update this file, simply rerun the command.
  */
 
-import {
-  NgModule
-} from '@angular/core';
+/*tslint:disable*/
 
-import {
-  SkyI18nModule,
-  SKY_LIB_RESOURCES_PROVIDERS
-} from '@skyux/i18n';
+import {Injectable,NgModule} from '@angular/core';
+import {getStringForLocale,SkyAppLocaleInfo,SkyI18nModule,SkyLibResourcesProvider,SKY_LIB_RESOURCES_PROVIDERS} from '@skyux/i18n';
 
-import {
-  <%= classify(name) %>ResourcesProvider
-} from './<%= dasherize(name) %>-resources-provider';
+@Injectable()
+export class <%= classify(name) %>ResourcesProvider implements SkyLibResourcesProvider {
+  private resources: any = <%= resources %>;
+  public getString(localeInfo: SkyAppLocaleInfo, name: string): string {
+    return getStringForLocale(this.resources, localeInfo.locale, name);
+  }
+}
 
 @NgModule({
-  exports: [
-    SkyI18nModule
-  ],
-  providers: [
-    {
-      provide: SKY_LIB_RESOURCES_PROVIDERS,
-      useClass: <%= classify(name) %>ResourcesProvider,
-      multi: true
-    }
-  ]
+  exports: [SkyI18nModule],
+  providers: [{
+    provide: SKY_LIB_RESOURCES_PROVIDERS,
+    useClass: <%= classify(name) %>ResourcesProvider,
+    multi: true
+  }]
 })
 export class <%= classify(name) %>ResourcesModule { }
