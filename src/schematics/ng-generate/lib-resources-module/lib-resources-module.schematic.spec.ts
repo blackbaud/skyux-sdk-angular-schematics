@@ -2,7 +2,6 @@ import {
   SchematicTestRunner
 } from '@angular-devkit/schematics/testing';
 
-import fs from 'fs-extra';
 import path from 'path';
 
 import {
@@ -16,7 +15,6 @@ describe('lib-resources-module.schematic', () => {
 
   beforeEach(() => {
     runner = new SchematicTestRunner('schematics', COLLECTION_PATH);
-    spyOn(fs, 'writeJsonSync').and.callFake(() => {});
   });
 
   it('should generate a resources module', async () => {

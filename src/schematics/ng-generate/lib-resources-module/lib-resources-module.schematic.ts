@@ -20,8 +20,6 @@ import {
   getWorkspace
 } from '@schematics/angular/utility/config';
 
-import fs from 'fs-extra';
-import glob from 'glob';
 import path from 'path';
 
 import {
@@ -36,15 +34,15 @@ import {
   TemplateContext
 } from './template-context';
 
-function getResourceFilesContents(srcPath: string) {
+function getResourceFilesContents(tree: Tree, srcPath: string) {
   const contents: any = {};
-  const files = glob.sync(
-    path.join(srcPath, 'assets/locales/resources_*.json')
-  );
-
-  files.forEach(file => {
+  const dirEntry = tree.getDir(path.join(srcPath, 'assets/locales'));
+  dirEntry.subfiles.map(subfile => path.join(srcPath, 'assets/locales', subfile)).forEach(file => {
     const locale = parseLocaleIdFromFileName(file);
-    contents[locale] = fs.readJsonSync(file);
+    const buffer = tree.read(file);
+    if (buffer) {
+      contents[locale] = JSON.parse(buffer.toString());
+    }
   });
 
   return contents;
@@ -58,9 +56,9 @@ function parseLocaleIdFromFileName(fileName: string): string {
     .replace('_', '-');
 }
 
-function parseResourceMessages(srcPath: string): ResourceMessages {
+function parseResourceMessages(tree: Tree, srcPath: string): ResourceMessages {
   const messages: ResourceMessages = {};
-  const contents = getResourceFilesContents(srcPath);
+  const contents = getResourceFilesContents(tree, srcPath);
 
   /**
    * Standardize keys to be uppercase, due to some language limitations
@@ -99,8 +97,8 @@ function ensureDefaultResourceFileExists(tree: Tree, srcPath: string): void {
 /**
  * Adds `@skyux/i18n` to the project's package.json `peerDependencies`.
  */
-function addSkyUxPeerDependency(tree: Tree, rootPath: string) {
-  const packageJsonPath = path.join(rootPath, 'package.json');
+function addSkyUxPeerDependency(tree: Tree, srcPath: string): void {
+  const packageJsonPath = path.join(srcPath.replace('src', ''), 'package.json');
   const packageJsonContent = tree.read(packageJsonPath)!;
   const packageJson = JSON.parse(packageJsonContent.toString());
   packageJson.peerDependencies = packageJson.peerDependencies || {};
@@ -122,37 +120,40 @@ function overwriteIfExists(host: Tree): Rule {
   });
 }
 
+function getProjectSourcePath(tree: Tree, options: InputOptions): string {
+  const workspace = getWorkspace(tree);
+  const project = workspace.projects[options.project];
+  return path.join(path.normalize(project.root), 'src');
+}
+
 export default function generateResourcesModule(options: InputOptions): Rule {
-  return (tree: Tree, _context: SchematicContext) => {
-    const workspace = getWorkspace(tree);
-    const project = workspace.projects[options.project];
-    const srcPath = path.join(path.normalize(project.root), 'src');
-    const movePath = path.normalize(srcPath + '/');
+  return chain([
+    (tree: Tree, _context: SchematicContext) => {
+      const srcPath = getProjectSourcePath(tree, options);
+      ensureDefaultResourceFileExists(tree, srcPath);
+      return tree;
+    },
+    (tree: Tree, _context: SchematicContext) => {
+      const srcPath = getProjectSourcePath(tree, options);
+      const movePath = path.normalize(srcPath + '/');
 
-    return chain([
-      () => {
-        ensureDefaultResourceFileExists(tree, srcPath);
-      },
-      () => {
-        addSkyUxPeerDependency(tree, project.root);
-      },
-      () => {
-        const messages = parseResourceMessages(srcPath);
-        const templateContext: TemplateContext = {
-          name: options.project,
-          resources: JSON.stringify(messages)
-        };
+      addSkyUxPeerDependency(tree, srcPath);
 
-        const templateConfig = { ...strings, ...templateContext };
+      const messages = parseResourceMessages(tree, srcPath);
+      const templateContext: TemplateContext = {
+        name: options.project,
+        resources: JSON.stringify(messages)
+      };
 
-        const templateSource = apply(url('./files'), [
-          applyTemplates(templateConfig),
-          move(movePath),
-          overwriteIfExists(tree)
-        ]);
+      const templateConfig = { ...strings, ...templateContext };
 
-        return mergeWith(templateSource, MergeStrategy.Overwrite);
-      }
-    ]);
-  };
+      const templateSource = apply(url('./files'), [
+        applyTemplates(templateConfig),
+        move(movePath),
+        overwriteIfExists(tree)
+      ]);
+
+      return mergeWith(templateSource, MergeStrategy.Overwrite);
+    }
+  ]);
 }
