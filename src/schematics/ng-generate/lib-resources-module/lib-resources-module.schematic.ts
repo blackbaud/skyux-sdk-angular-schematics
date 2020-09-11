@@ -82,24 +82,18 @@ function parseResourceMessages(srcPath: string): ResourceMessages {
   return messages;
 }
 
-function ensureDefaultResourceFileExists(srcPath: string) {
+function ensureDefaultResourceFileExists(tree: Tree, srcPath: string): void {
   const defaultResourcePath = path.join(`${srcPath}/assets/locales/resources_en_US.json`);
-  if (fs.existsSync(defaultResourcePath)) {
+  if (tree.exists(defaultResourcePath)) {
     return;
   }
 
-  fs.writeJsonSync(
-    defaultResourcePath,
-    {
-      hello_world: {
-        _description: 'A simple message.',
-        message: 'Hello, world!'
-      }
-    },
-    {
-      spaces: 2
+  tree.create(defaultResourcePath, JSON.stringify({
+    hello_world: {
+      _description: 'A simple message.',
+      message: 'Hello, world!'
     }
-  );
+  }, undefined, 2) + '\n');
 }
 
 /**
@@ -128,33 +122,37 @@ function overwriteIfExists(host: Tree): Rule {
   });
 }
 
-export function generateResourcesModule(options: InputOptions): Rule {
+export default function generateResourcesModule(options: InputOptions): Rule {
   return (tree: Tree, _context: SchematicContext) => {
-
     const workspace = getWorkspace(tree);
     const project = workspace.projects[options.project];
     const srcPath = path.join(path.normalize(project.root), 'src');
     const movePath = path.normalize(srcPath + '/');
 
-    addSkyUxPeerDependency(tree, project.root);
-
-    ensureDefaultResourceFileExists(srcPath);
-    const messages = parseResourceMessages(srcPath);
-    const templateContext: TemplateContext = {
-      name: options.project,
-      resources: JSON.stringify(messages)
-    };
-
-    const templateConfig = { ...strings, ...templateContext };
-
-    const templateSource = apply(url('./files'), [
-      applyTemplates(templateConfig),
-      move(movePath),
-      overwriteIfExists(tree)
-    ]);
-
     return chain([
-      mergeWith(templateSource, MergeStrategy.Overwrite)
+      () => {
+        ensureDefaultResourceFileExists(tree, srcPath);
+      },
+      () => {
+        addSkyUxPeerDependency(tree, project.root);
+      },
+      () => {
+        const messages = parseResourceMessages(srcPath);
+        const templateContext: TemplateContext = {
+          name: options.project,
+          resources: JSON.stringify(messages)
+        };
+
+        const templateConfig = { ...strings, ...templateContext };
+
+        const templateSource = apply(url('./files'), [
+          applyTemplates(templateConfig),
+          move(movePath),
+          overwriteIfExists(tree)
+        ]);
+
+        return mergeWith(templateSource, MergeStrategy.Overwrite);
+      }
     ]);
   };
 }

@@ -1,35 +1,35 @@
-import {
-  MockNodePackageInstallTask,
-  setupTest,
-  teardownTest
-} from './testing/setup-test';
+// import {
+//   MockNodePackageInstallTask,
+//   setupTest,
+//   teardownTest
+// } from './testing/setup-test';
 
-// Setup mocks before importing the file that will be tested.
-setupTest();
+// // Setup mocks before importing the file that will be tested.
+// setupTest();
 
-import {
-  ngAdd
-} from './ng-add.schematic';
+// import {
+//   ngAdd
+// } from './ng-add.schematic';
 
-describe('ngAdd schematic', () => {
-  let mockContext: any;
+// describe('ngAdd schematic', () => {
+//   let mockContext: any;
 
-  beforeEach(() => {
-    mockContext = {
-      addTask: jasmine.createSpy('addTask')
-    };
-  });
+//   beforeEach(() => {
+//     mockContext = {
+//       addTask: jasmine.createSpy('addTask')
+//     };
+//   });
 
-  afterEach(() => {
-    teardownTest();
-  });
+//   afterEach(() => {
+//     teardownTest();
+//   });
 
-  it('should add a node package install task', () => {
-    const rule = ngAdd();
+//   it('should add a node package install task', () => {
+//     const rule = ngAdd();
 
-    rule({} as any, mockContext);
+//     rule({} as any, mockContext);
 
-    expect(mockContext.addTask).toHaveBeenCalledWith(jasmine.any(MockNodePackageInstallTask));
-  });
+//     expect(mockContext.addTask).toHaveBeenCalledWith(jasmine.any(MockNodePackageInstallTask));
+//   });
 
-});
+// });
