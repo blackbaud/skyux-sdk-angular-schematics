@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "type": "object",
+  "properties": {
+    "project": {
+      "type": "string",
+      "description": "The name of your project",
+      "x-prompt": "What is the name of the project?"
+    }
+  },
+  "required": ["project"]
+}

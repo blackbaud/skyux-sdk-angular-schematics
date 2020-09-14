@@ -3,7 +3,13 @@
   "schematics": {
     "ng-add": {
       "description": "Add @skyux-sdk/angular-schematics to your project.",
-      "factory": "./src/schematics/ng-add/ng-add.schematic#ngAdd"
+      "factory": "./src/schematics/ng-add/ng-add.schematic#ngAdd",
+      "schema": "./src/schematics/ng-add/schema.json"
+    },
+    "lib-resources-module": {
+      "description": "Generate a resources module for your library.",
+      "factory": "./src/schematics/ng-generate/lib-resources-module/lib-resources-module.schematic",
+      "schema": "./src/schematics/ng-generate/lib-resources-module/schema.json"
     }
   }
 }
