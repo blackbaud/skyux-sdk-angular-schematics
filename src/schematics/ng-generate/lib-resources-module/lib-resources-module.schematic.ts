@@ -41,14 +41,20 @@ import {
 function getResourceFilesContents(tree: Tree, srcPath: string) {
   const contents: any = {};
   const dirEntry = tree.getDir(path.join(srcPath, 'assets/locales'));
+
   dirEntry.subfiles.map(subfile => path.join(srcPath, 'assets/locales', subfile)).forEach(file => {
     const locale = parseLocaleIdFromFileName(file);
-    contents[locale] = getFileContents(tree, file);
+    contents[locale] = JSON.parse(getFileContents(tree, file));
   });
 
   return contents;
 }
 
+/**
+ * Standardize keys to be uppercase, due to some language limitations
+ * with lowercase characters.
+ * See: https://stackoverflow.com/questions/234591/upper-vs-lower-case
+ */
 function parseLocaleIdFromFileName(fileName: string): string {
   return fileName
     .split('.json')[0]
@@ -61,16 +67,6 @@ function parseResourceMessages(tree: Tree, srcPath: string): ResourceMessages {
   const messages: ResourceMessages = {};
   const contents = getResourceFilesContents(tree, srcPath);
 
-  /**
-   * Standardize keys to be uppercase, due to some language limitations
-   * with lowercase characters.
-   * See: https://stackoverflow.com/questions/234591/upper-vs-lower-case
-   */
-  const resourceFilesExist = ('EN-US' in contents);
-  if (!resourceFilesExist) {
-    return messages;
-  }
-
   Object.keys(contents).forEach(locale => {
     messages[locale] = {};
     Object.keys(contents[locale]).forEach(key => {
@@ -81,24 +77,10 @@ function parseResourceMessages(tree: Tree, srcPath: string): ResourceMessages {
   return messages;
 }
 
-function ensureDefaultResourceFileExists(tree: Tree, srcPath: string): void {
-  const defaultResourcePath = path.join(`${srcPath}/assets/locales/resources_en_US.json`);
-  if (tree.exists(defaultResourcePath)) {
-    return;
-  }
-
-  tree.create(defaultResourcePath, JSON.stringify({
-    hello_world: {
-      _description: 'A simple message.',
-      message: 'Hello, world!'
-    }
-  }, undefined, 2) + '\n');
-}
-
 /**
  * Adds `@skyux/i18n` to the project's package.json `peerDependencies`.
  */
-function addSkyUxPeerDependency(tree: Tree, srcPath: string): void {
+function addI18nPeerDependency(tree: Tree, srcPath: string): void {
   const packageJsonPath = path.join(srcPath.replace('src', ''), 'package.json');
   const packageJsonContent = getFileContents(tree, packageJsonPath);
   const packageJson = JSON.parse(packageJsonContent);
@@ -111,10 +93,10 @@ function addSkyUxPeerDependency(tree: Tree, srcPath: string): void {
  * Fixes an Angular CLI issue with merge strategies.
  * @see https://github.com/angular/angular-cli/issues/11337#issuecomment-516543220
  */
-function overwriteIfExists(host: Tree): Rule {
+function overwriteIfExists(tree: Tree): Rule {
   return forEach(fileEntry => {
-    if (host.exists(fileEntry.path) && fileEntry) {
-      host.overwrite(fileEntry.path, fileEntry.content);
+    if (tree.exists(fileEntry.path)) {
+      tree.overwrite(fileEntry.path, fileEntry.content);
       return null;
     }
     return fileEntry;
@@ -124,21 +106,44 @@ function overwriteIfExists(host: Tree): Rule {
 function getProjectSourcePath(tree: Tree, options: InputOptions): string {
   const workspace = getWorkspace(tree);
   const project = workspace.projects[options.project];
+
+  if (!project) {
+    throw new Error(`The "${options.project}" project is not defined in angular.json. Provide a valid project name.`);
+  }
+
   return path.join(path.normalize(project.root), 'src');
+}
+
+function ensureDefaultResourcesFileExists(options: InputOptions): Rule {
+  return (tree: Tree, _context: SchematicContext) => {
+    const srcPath = getProjectSourcePath(tree, options);
+    const defaultResourcePath = path.join(`${srcPath}/assets/locales/resources_en_US.json`);
+
+    if (tree.exists(defaultResourcePath)) {
+      return;
+    }
+
+    tree.create(defaultResourcePath, JSON.stringify({
+      hello_world: {
+        _description: 'A simple message.',
+        message: 'Hello, world!'
+      }
+    }, undefined, 2) + '\n');
+
+    return tree;
+  }
 }
 
 export default function generateResourcesModule(options: InputOptions): Rule {
   return chain([
-    (tree: Tree, _context: SchematicContext) => {
-      const srcPath = getProjectSourcePath(tree, options);
-      ensureDefaultResourceFileExists(tree, srcPath);
-      return tree;
-    },
+
+    ensureDefaultResourcesFileExists(options),
+
     (tree: Tree, _context: SchematicContext) => {
       const srcPath = getProjectSourcePath(tree, options);
       const movePath = path.normalize(srcPath + '/');
 
-      addSkyUxPeerDependency(tree, srcPath);
+      addI18nPeerDependency(tree, srcPath);
 
       const messages = parseResourceMessages(tree, srcPath);
       const templateContext: TemplateContext = {
