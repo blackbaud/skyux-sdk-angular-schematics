@@ -1,6 +1,6 @@
 {
   "name": "@skyux-sdk/angular-schematics",
-  "version": "0.0.1",
+  "version": "4.0.0-alpha.0",
   "repository": {
     "url": "https://github.com/blackbaud/skyux-sdk-angular-builders"
   },
