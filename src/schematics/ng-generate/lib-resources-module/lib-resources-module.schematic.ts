@@ -23,6 +23,10 @@ import {
 import path from 'path';
 
 import {
+  getFileContents
+} from '../../shared/get-file-contents';
+
+import {
   InputOptions
 } from './input-options';
 
@@ -39,10 +43,7 @@ function getResourceFilesContents(tree: Tree, srcPath: string) {
   const dirEntry = tree.getDir(path.join(srcPath, 'assets/locales'));
   dirEntry.subfiles.map(subfile => path.join(srcPath, 'assets/locales', subfile)).forEach(file => {
     const locale = parseLocaleIdFromFileName(file);
-    const buffer = tree.read(file);
-    if (buffer) {
-      contents[locale] = JSON.parse(buffer.toString());
-    }
+    contents[locale] = getFileContents(tree, file);
   });
 
   return contents;
@@ -99,8 +100,8 @@ function ensureDefaultResourceFileExists(tree: Tree, srcPath: string): void {
  */
 function addSkyUxPeerDependency(tree: Tree, srcPath: string): void {
   const packageJsonPath = path.join(srcPath.replace('src', ''), 'package.json');
-  const packageJsonContent = tree.read(packageJsonPath)!;
-  const packageJson = JSON.parse(packageJsonContent.toString());
+  const packageJsonContent = getFileContents(tree, packageJsonPath);
+  const packageJson = JSON.parse(packageJsonContent);
   packageJson.peerDependencies = packageJson.peerDependencies || {};
   packageJson.peerDependencies['@skyux/i18n'] = '^4.0.0';
   tree.overwrite(packageJsonPath, JSON.stringify(packageJson, undefined, 2));

@@ -9,8 +9,8 @@ import {
 
 async function createTestProject(
   runner: SchematicTestRunner,
-  projectType: 'application'|'library',
-  appOptions = {},
+  projectType: 'application' | 'library',
+  appOptions = { },
   tree?: Tree
 ): Promise<UnitTestTree> {
 
@@ -29,7 +29,7 @@ async function createTestProject(
     '@schematics/angular',
     projectType,
     {
-      name: 'my-lib',
+      name: 'foobar',
       ...appOptions
     },
     workspaceTree
@@ -39,7 +39,11 @@ async function createTestProject(
 /**
  * Create a base app used for testing.
  */
-export async function createTestApp(runner: SchematicTestRunner, appOptions = {}, tree?: Tree): Promise<UnitTestTree> {
+export async function createTestApp(
+  runner: SchematicTestRunner,
+  appOptions = { },
+  tree?: Tree
+): Promise<UnitTestTree> {
   return createTestProject(runner, 'application', appOptions, tree);
 }
 

@@ -1,35 +1,32 @@
-// import {
-//   MockNodePackageInstallTask,
-//   setupTest,
-//   teardownTest
-// } from './testing/setup-test';
+import {
+  SchematicTestRunner
+} from '@angular-devkit/schematics/testing';
 
-// // Setup mocks before importing the file that will be tested.
-// setupTest();
+import path from 'path';
 
-// import {
-//   ngAdd
-// } from './ng-add.schematic';
+import {
+  createTestApp
+} from '../testing/scaffold';
 
-// describe('ngAdd schematic', () => {
-//   let mockContext: any;
+const COLLECTION_PATH = path.resolve(__dirname, '../../../collection.json');
 
-//   beforeEach(() => {
-//     mockContext = {
-//       addTask: jasmine.createSpy('addTask')
-//     };
-//   });
+describe('ng-add.schematic', () => {
+  let runner: SchematicTestRunner;
 
-//   afterEach(() => {
-//     teardownTest();
-//   });
+  beforeEach(() => {
+    runner = new SchematicTestRunner('schematics', COLLECTION_PATH);
+  });
 
-//   it('should add a node package install task', () => {
-//     const rule = ngAdd();
+  it('should update package.json', async () => {
+    const app = await createTestApp(runner);
+    await runner
+      .runSchematicAsync('ng-add', { project: 'foobar' }, app)
+      .toPromise();
 
-//     rule({} as any, mockContext);
+    expect(runner.tasks.some(task => task.name === 'node-package')).toEqual(
+      true,
+      'Expected the schematic to setup a package install step.'
+    );
+  });
 
-//     expect(mockContext.addTask).toHaveBeenCalledWith(jasmine.any(MockNodePackageInstallTask));
-//   });
-
-// });
+});
