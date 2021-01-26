@@ -12,13 +12,10 @@ import {
   move,
   Rule,
   SchematicContext,
+  SchematicsException,
   Tree,
   url
 } from '@angular-devkit/schematics';
-
-import {
-  getWorkspace
-} from '@schematics/angular/utility/config';
 
 import path from 'path';
 
@@ -104,7 +101,14 @@ function overwriteIfExists(tree: Tree): Rule {
 }
 
 function getProjectSourcePath(tree: Tree, options: InputOptions): string {
-  const workspace = getWorkspace(tree);
+
+  // Get the workspace config.
+  const workspaceConfigBuffer = tree.read('angular.json');
+  if (!workspaceConfigBuffer) {
+    throw new SchematicsException('Not an Angular CLI workspace.');
+  }
+  const workspace = JSON.parse(workspaceConfigBuffer.toString());
+
   const project = workspace.projects[options.project];
 
   if (!project) {

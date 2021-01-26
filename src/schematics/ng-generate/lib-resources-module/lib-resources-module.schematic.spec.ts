@@ -109,4 +109,14 @@ describe('lib-resources-module.schematic', () => {
         .toPromise()
     ).toBeRejectedWithError(`Cannot read "${PACKAGE_JSON_FILE}" because it does not exist.`);
   });
+
+  it('should throw an error if angular.json doesn\'t exist', async () => {
+    app.delete('angular.json');
+
+    await expectAsync(
+      runner
+        .runSchematicAsync('lib-resources-module', { project: PROJECT_NAME }, app)
+        .toPromise()
+    ).toBeRejectedWithError('Not an Angular CLI workspace.');
+  });
 });
