@@ -1,0 +1,17 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: |
+        npm ci
+        npm run ci
+        bash <(curl -s https://codecov.io/bash)
